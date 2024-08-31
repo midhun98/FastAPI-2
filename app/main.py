@@ -1,8 +1,13 @@
 import psycopg2
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from psycopg2.extras import RealDictCursor
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
+from . import models
+from .database import engine, get_db
+
+models.Base.metadata.create_all(bind=engine)
 app = FastAPI()
 
 try:
@@ -73,3 +78,8 @@ async def update_post(id: int, post: PostBase):
     if updated_post is None:
         raise HTTPException(status_code=404, detail="Post not found")
     return {"data": updated_post}
+
+
+@app.get("/sqlalchemy")
+def test_posts(db: Session = Depends(get_db)):
+    return {"status": "success"}
