@@ -1,11 +1,11 @@
 import psycopg2
 from fastapi import FastAPI, HTTPException, Depends
 from psycopg2.extras import RealDictCursor
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from . import models
 from .database import engine, get_db
+from .schemas import PostCreate
 
 models.Base.metadata.create_all(bind=engine)
 app = FastAPI()
@@ -19,12 +19,6 @@ except psycopg2.Error as e:
     print(e)
 
 
-class PostBase(BaseModel):
-    title: str
-    content: str
-    published: bool = True
-
-
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
@@ -33,12 +27,6 @@ async def root():
 @app.get("/hello/{name}")
 async def say_hello(name: str):
     return {"message": f"Hello {name}"}
-
-
-@app.get("/sqlalchemy")
-def test_posts(db: Session = Depends(get_db)):
-    post = db.query(models.Post).all()
-    return {"data": post}
 
 
 @app.get("/posts")
@@ -50,7 +38,7 @@ async def posts(db: Session = Depends(get_db)):
 
 
 @app.post("/posts", status_code=201)
-async def create_post(post: PostBase, db: Session = Depends(get_db)):
+async def create_post(post: PostCreate, db: Session = Depends(get_db)):
     # cursor.execute("""INSERT INTO posts (title, content, published) VALUES (%s, %s, %s) RETURNING *""",
     #                (post.title, post.content, post.published))
     # new_post = cursor.fetchone()
@@ -89,7 +77,7 @@ async def delete_post(id: int, db: Session = Depends(get_db)):
 
 
 @app.put("/posts/{id}", status_code=200)
-async def update_post(id: int, updated_post: PostBase, db: Session = Depends(get_db)):
+async def update_post(id: int, updated_post: PostCreate, db: Session = Depends(get_db)):
     # cursor.execute("""UPDATE posts SET title= %s, content = %s, published=%s  WHERE id = %s RETURNING *""",
     #                (post.title, post.content, post.published, str(id)))
     # updated_post = cursor.fetchone()
