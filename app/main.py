@@ -1,3 +1,5 @@
+from typing import List
+
 import psycopg2
 from fastapi import FastAPI, HTTPException, Depends
 from psycopg2.extras import RealDictCursor
@@ -5,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from . import models
 from .database import engine, get_db
-from .schemas import PostCreate
+from .schemas import PostCreate, Post
 
 models.Base.metadata.create_all(bind=engine)
 app = FastAPI()
@@ -29,7 +31,7 @@ async def say_hello(name: str):
     return {"message": f"Hello {name}"}
 
 
-@app.get("/posts")
+@app.get("/posts", response_model=List[Post])
 async def posts(db: Session = Depends(get_db)):
     # cursor.execute("""SELECT * FROM posts""")
     # posts = cursor.fetchall()
@@ -37,7 +39,7 @@ async def posts(db: Session = Depends(get_db)):
     return posts
 
 
-@app.post("/posts", status_code=201)
+@app.post("/posts", status_code=201, response_model=Post)
 async def create_post(post: PostCreate, db: Session = Depends(get_db)):
     # cursor.execute("""INSERT INTO posts (title, content, published) VALUES (%s, %s, %s) RETURNING *""",
     #                (post.title, post.content, post.published))
@@ -48,10 +50,10 @@ async def create_post(post: PostCreate, db: Session = Depends(get_db)):
     db.add(new_post)
     db.commit()
     db.refresh(new_post)
-    return {"message": new_post}
+    return new_post
 
 
-@app.get("/posts/{id}")
+@app.get("/posts/{id}", response_model=Post)
 async def get_post(id: int, db: Session = Depends(get_db)):
     # cursor.execute("""SELECT * FROM posts WHERE ID = %s""", (str(id),))
     # post = cursor.fetchone()
@@ -89,4 +91,4 @@ async def update_post(id: int, updated_post: PostCreate, db: Session = Depends(g
         raise HTTPException(status_code=404, detail="Post not found")
     post_query.update(updated_post.dict(), synchronize_session=False)
     db.commit()
-    return {"data": post_query.first()}
+    return post_query.first()
