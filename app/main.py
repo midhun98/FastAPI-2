@@ -2,12 +2,14 @@ from typing import List
 
 import psycopg2
 from fastapi import FastAPI, HTTPException, Depends
+from fastapi import status
 from psycopg2.extras import RealDictCursor
 from sqlalchemy.orm import Session
 
 from . import models
+from . import utils
 from .database import engine, get_db
-from .schemas import PostCreate, Post
+from .schemas import PostCreate, Post, UserCreate, UserOut
 
 models.Base.metadata.create_all(bind=engine)
 app = FastAPI()
@@ -92,3 +94,17 @@ async def update_post(id: int, updated_post: PostCreate, db: Session = Depends(g
     post_query.update(updated_post.dict(), synchronize_session=False)
     db.commit()
     return post_query.first()
+
+
+@app.post("/users", status_code=status.HTTP_201_CREATED, response_model=UserOut)
+def create_user(user: UserCreate, db: Session = Depends(get_db)):
+    # hash the password - user.password
+    hashed_password = utils.hash(user.password)
+    user.password = hashed_password
+
+    new_user = models.User(**user.dict())
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    return new_user
